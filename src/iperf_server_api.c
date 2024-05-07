@@ -87,6 +87,17 @@ iperf_server_worker_run(void *s) {
             }
         }
     }
+    // Busy-wait to simulate computing on the received data.
+    if (test->post_req_compute_us > 0) {
+        struct iperf_time target;
+        iperf_time_now(&target);
+        iperf_time_add_usecs(&target, test->post_req_compute_us);
+        struct iperf_time now;
+        while (1) {
+            iperf_time_now(&now);
+            if (iperf_time_compare(&now, &target) >= 0) break;
+        }
+    }
     return NULL;
 
   cleanup_and_fail:
@@ -903,6 +914,17 @@ iperf_run_server(struct iperf_test *test)
 	}
     }
 
+    // Busy-wait to simulate computing on the received data.
+    if (test->post_test_compute_us > 0) {
+        struct iperf_time target;
+        iperf_time_now(&target);
+        iperf_time_add_usecs(&target, test->post_test_compute_us);
+        struct iperf_time now;
+        while (1) {
+            iperf_time_now(&now);
+            if (iperf_time_compare(&now, &target) >= 0) break;
+        }
+    }
 
     if (test->json_output) {
 	if (iperf_json_finish(test) < 0)

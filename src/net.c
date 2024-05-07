@@ -371,8 +371,13 @@ netannounce(int domain, int proto, const char *local, const char *bind_dev, int 
 /********************************************************************/
 
 int
-Nread(int fd, char *buf, size_t count, int prot)
-{
+Nread(int fd, char *buf, size_t count, int prot) {
+  return NreadCompute(fd, buf, count, prot, 0);
+}
+
+int
+NreadCompute(int fd, char *buf, size_t count, int prot,
+              int post_recv_compute_us) {
     register ssize_t r;
     register size_t nleft = count;
     struct iperf_time ftimeout = { 0, 0 };
@@ -415,6 +420,18 @@ Nread(int fd, char *buf, size_t count, int prot)
 
         nleft -= r;
         buf += r;
+
+        // Busy-wait to simulate computing on the received data.
+        if (post_recv_compute_us > 0) {
+            struct iperf_time target;
+            iperf_time_now(&target);
+            iperf_time_add_usecs(&target, post_recv_compute_us);
+            struct iperf_time now;
+            while (1) {
+                iperf_time_now(&now);
+                if (iperf_time_compare(&now, &target) >= 0) break;
+            }
+        }
 
         /*
          * We need some more bytes but don't want to wait around

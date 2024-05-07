@@ -1128,6 +1128,9 @@ iperf_parse_arguments(struct iperf_test *test, int argc, char **argv)
         {"idle-timeout", required_argument, NULL, OPT_IDLE_TIMEOUT},
         {"rcv-timeout", required_argument, NULL, OPT_RCV_TIMEOUT},
         {"snd-timeout", required_argument, NULL, OPT_SND_TIMEOUT},
+        {"post-recv-compute-us", required_argument, NULL, OPT_POST_RECV_COMPUTE},
+        {"post-req-compute-us", required_argument, NULL, OPT_POST_REQ_COMPUTE},
+        {"post-test-compute-us", required_argument, NULL, OPT_POST_TEST_COMPUTE},
         {"debug", optional_argument, NULL, 'd'},
         {"help", no_argument, NULL, 'h'},
         {NULL, 0, NULL, 0}
@@ -1622,6 +1625,18 @@ iperf_parse_arguments(struct iperf_test *test, int argc, char **argv)
 	    case 'h':
 		usage_long(stdout);
 		exit(0);
+        case OPT_POST_RECV_COMPUTE:
+            test->post_recv_compute_us = atoi(optarg);
+            printf("post_recv_compute_us: %d\n", test->post_recv_compute_us);
+            break;
+        case OPT_POST_REQ_COMPUTE:
+            test->post_req_compute_us = atoi(optarg);
+            printf("post_req_compute_us: %d\n", test->post_req_compute_us);
+            break;
+        case OPT_POST_TEST_COMPUTE:
+            test->post_test_compute_us = atoi(optarg);
+            printf("post_test_compute_us: %d\n", test->post_test_compute_us);
+            break;
             default:
                 fprintf(stderr, "\n");
                 usage();

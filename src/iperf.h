@@ -413,6 +413,10 @@ struct iperf_test
     char *server_output_text;
     cJSON *json_server_output;
 
+    int post_recv_compute_us;
+    int post_req_compute_us;
+    int post_test_compute_us;
+
     /* Server output (use on server side only) */
     TAILQ_HEAD(iperf_textlisthead, iperf_textline) server_output_list;
 
