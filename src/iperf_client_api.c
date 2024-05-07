@@ -788,21 +788,23 @@ iperf_run_client(struct iperf_test * test)
     SLIST_FOREACH(sp, &test->streams, streams) {
         sp->done = 1;
         int rc;
-        rc = pthread_cancel(sp->thr);
-        if (rc != 0 && rc != ESRCH) {
-            i_errno = IEPTHREADCANCEL;
-            errno = rc;
-            iperf_err(test, "cleanup_and_fail in pthread_cancel - %s", iperf_strerror(i_errno));
-        }
-        rc = pthread_join(sp->thr, NULL); 
-        if (rc != 0 && rc != ESRCH) {
-            i_errno = IEPTHREADJOIN;
-            errno = rc;
-            iperf_err(test, "cleanup_and_fail in pthread_join - %s", iperf_strerror(i_errno));
-        }
-        if (test->debug_level >= DEBUG_LEVEL_INFO) {
-            iperf_printf(test, "Thread FD %d stopped\n", sp->socket);
-        }
+	if (sp->thr != NULL) {
+	    rc = pthread_cancel(sp->thr);
+	    if (rc != 0 && rc != ESRCH) {
+                i_errno = IEPTHREADCANCEL;
+	        errno = rc;
+	        iperf_err(test, "cleanup_and_fail in pthread_cancel - %s", iperf_strerror(i_errno));
+	    }
+	    rc = pthread_join(sp->thr, NULL);
+	    if (rc != 0 && rc != ESRCH) {
+	        i_errno = IEPTHREADJOIN;
+		errno = rc;
+		iperf_err(test, "cleanup_and_fail in pthread_join - %s", iperf_strerror(i_errno));
+	    }
+	    if (test->debug_level >= DEBUG_LEVEL_INFO) {
+	        iperf_printf(test, "Thread FD %d stopped\n", sp->socket);
+	    }
+	}
     }
     if (test->debug_level >= DEBUG_LEVEL_INFO) {
         iperf_printf(test, "All threads stopped\n");
