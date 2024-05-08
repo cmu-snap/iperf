@@ -159,7 +159,7 @@ const char usage_longstr[] = "Usage: iperf3 [-s|-c host] [options]\n"
 #endif //HAVE_SSL
                            "  --post-recv-compute-us    time (in us) to busywait after each recv()\n"
                            "  --post-req-compute-us     time (in us) to busywait after each individual stream finishes (see -P)\n"
-                           "  --post-test-compute-us    time in microsecs to busywait after the entire test finishes\n"
+                           "  --post-test-compute-us    time (in us) to busywait after the entire test finishes\n"
                            "Client specific:\n"
                            "  -c, --client <host>[%%<dev>] run in client mode, connecting to <host>\n"
                            "                              (option <dev> equivalent to `--bind-dev <dev>`)\n"
