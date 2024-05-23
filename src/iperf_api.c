@@ -630,11 +630,14 @@ void iperf_on_test_start(struct iperf_test *test) {
         test->json_start, "test_start",
         iperf_json_printf(
             "protocol: %s  num_streams: %d  blksize: %d  omit: %d  duration: "
-            "%d  bytes: %d  blocks: %d  reverse: %d  tos: %d  target_bitrate: "
+            "%d  bytes: %d  numbursts: %d  inter_burst_us: %d  blocks: %d  "
+            "reverse: %d  tos: %d  target_bitrate: "
             "%d bidir: %d fqrate: %d",
             test->protocol->name, (int64_t)test->num_streams,
             (int64_t)test->settings->blksize, (int64_t)test->omit,
             (int64_t)test->duration, (int64_t)test->settings->bytes,
+            (int64_t)test->settings->num_bursts,
+            (int64_t)test->settings->inter_burst_time_us,
             (int64_t)test->settings->blocks,
             test->reverse ? (int64_t)1 : (int64_t)0,
             (int64_t)test->settings->tos, (int64_t)test->settings->rate,
@@ -830,6 +833,10 @@ int iperf_parse_arguments(struct iperf_test *test, int argc, char **argv) {
        OPT_SERVER_BITRATE_LIMIT},
       {"time", required_argument, NULL, 't'},
       {"bytes", required_argument, NULL, 'n'},
+      // For scheduling ---
+      {"numbursts", required_argument, NULL, 'K'},
+      {"interburstus", required_argument, NULL, 'U'},
+      // ------------------
       {"blockcount", required_argument, NULL, 'k'},
       {"length", required_argument, NULL, 'l'},
       {"parallel", required_argument, NULL, 'P'},
@@ -1079,6 +1086,14 @@ int iperf_parse_arguments(struct iperf_test *test, int argc, char **argv) {
         break;
       case 'n':
         test->settings->bytes = unit_atoi(optarg);
+        client_flag = 1;
+        break;
+      case 'K':
+        test->settings->num_bursts = unit_atoi(optarg);
+        client_flag = 1;
+        break;
+      case 'U':
+        test->settings->inter_burst_time_us = unit_atoi(optarg);
         client_flag = 1;
         break;
       case 'k':
@@ -1730,7 +1745,7 @@ int iperf_send_mt(struct iperf_stream *sp) {
         // XXX If we hit one of these ending conditions maybe
         // want to stop even trying to send something?
         if (multisend > 1 && test->settings->bytes != 0 &&
-            test->bytes_sent >= test->settings->bytes)
+            sp->bytes_sent >= test->settings->bytes)
           break;
         if (multisend > 1 && test->settings->blocks != 0 &&
             test->blocks_sent >= test->settings->blocks)
@@ -1742,6 +1757,7 @@ int iperf_send_mt(struct iperf_stream *sp) {
         }
         streams_active = 1;
         test->bytes_sent += r;
+        sp->bytes_sent += r;
         if (!sp->pending_size) ++test->blocks_sent;
         if (no_throttle_check) iperf_check_throttle(sp, &now);
       }
@@ -1958,6 +1974,9 @@ static int send_parameters(struct iperf_test *test) {
       cJSON_AddNumberToObject(j, "server_affinity", test->server_affinity);
     cJSON_AddNumberToObject(j, "time", test->duration);
     cJSON_AddNumberToObject(j, "num", test->settings->bytes);
+    cJSON_AddNumberToObject(j, "numbursts", test->settings->num_bursts);
+    cJSON_AddNumberToObject(j, "interburstus",
+                            test->settings->inter_burst_time_us);
     cJSON_AddNumberToObject(j, "blockcount", test->settings->blocks);
     if (test->settings->mss)
       cJSON_AddNumberToObject(j, "MSS", test->settings->mss);
@@ -2068,6 +2087,12 @@ static int get_parameters(struct iperf_test *test) {
     test->settings->bytes = 0;
     if ((j_p = cJSON_GetObjectItem(j, "num")) != NULL)
       test->settings->bytes = j_p->valueint;
+    test->settings->num_bursts = 0;
+    if ((j_p = cJSON_GetObjectItem(j, "numbursts")) != NULL)
+      test->settings->num_bursts = j_p->valueint;
+    test->settings->inter_burst_time_us = 0;
+    if ((j_p = cJSON_GetObjectItem(j, "interburstus")) != NULL)
+      test->settings->inter_burst_time_us = j_p->valueint;
     test->settings->blocks = 0;
     if ((j_p = cJSON_GetObjectItem(j, "blockcount")) != NULL)
       test->settings->blocks = j_p->valueint;
@@ -2229,6 +2254,19 @@ static int send_results(struct iperf_test *test) {
           end_time = iperf_time_in_secs(&temp_time);
           cJSON_AddNumberToObject(j_stream, "start_time", start_time);
           cJSON_AddNumberToObject(j_stream, "end_time", end_time);
+
+          // Add burst metrics
+          cJSON *j_burst_metrics = cJSON_CreateArray();
+          struct stream_burst_metrics *bm;
+          SLIST_FOREACH(bm, &sp->burst_metrics, burst_metrics) {
+            cJSON *j_bm = cJSON_CreateObject();
+            cJSON_AddNumberToObject(j_bm, "start",
+                                    iperf_time_in_secs(&(bm->start)));
+            cJSON_AddNumberToObject(j_bm, "end",
+                                    iperf_time_in_secs(&(bm->end)));
+            cJSON_AddItemToArray(j_burst_metrics, j_bm);
+          }
+          cJSON_AddItemToObject(j_stream, "burst_metrics", j_burst_metrics);
         }
       }
       if (r == 0 && test->debug) {
@@ -2694,6 +2732,8 @@ int iperf_defaults(struct iperf_test *testp) {
   testp->settings->burst = 0;
   testp->settings->mss = 0;
   testp->settings->bytes = 0;
+  testp->settings->num_bursts = 1;
+  testp->settings->inter_burst_time_us = 0;
   testp->settings->blocks = 0;
   testp->settings->connect_timeout = -1;
   testp->settings->rcv_timeout.secs = DEFAULT_NO_MSG_RCVD_TIMEOUT / SEC_TO_mS;
@@ -3015,6 +3055,8 @@ void iperf_reset_test(struct iperf_test *test) {
 
 /* Reset all of a test's stats back to zero.  Called when the omitting
 ** period is over.
+**
+** TODO: For scheduling, do we need to call this after each burst?
 */
 void iperf_reset_stats(struct iperf_test *test) {
   struct iperf_time now;
@@ -3023,12 +3065,14 @@ void iperf_reset_stats(struct iperf_test *test) {
 
   test->bytes_sent = 0;
   test->blocks_sent = 0;
+  // test->bursts_sent = 0;
   iperf_time_now(&now);
   SLIST_FOREACH(sp, &test->streams, streams) {
     sp->omitted_packet_count = sp->packet_count;
     sp->omitted_cnt_error = sp->cnt_error;
     sp->omitted_outoforder_packets = sp->outoforder_packets;
     sp->jitter = 0;
+    sp->bytes_sent = 0;
     rp = sp->result;
     rp->bytes_sent_omit = rp->bytes_sent;
     rp->bytes_received = 0;
@@ -3601,10 +3645,9 @@ static void iperf_print_results(struct iperf_test *test) {
           if (test->protocol->id == Ptcp || test->protocol->id == Psctp) {
             if (test->sender_has_retransmits) {
               /* Sender summary, TCP and SCTP with retransmits. */
-              if (test->json_output)
-                cJSON_AddItemToObject(
-                    json_summary_stream, report_sender,
-                    iperf_json_printf(
+              if (test->json_output) {
+                // Basic sender info.
+                cJSON *sender_info = iperf_json_printf(
                         "socket: %d  start: %f  end: %f  seconds: %f  bytes: "
                         "%d  bits_per_second: %f  retransmits: %d  "
                         "max_snd_cwnd:  %d  max_snd_wnd:  %d  max_rtt:  %d  "
@@ -3621,8 +3664,25 @@ static void iperf_print_results(struct iperf_test *test) {
                                       ? 0
                                       : sp->result->stream_sum_rtt /
                                             sp->result->stream_count_rtt),
-                        stream_must_be_sender));
-              else if (test->role == 's' && !sp->sender) {
+                    stream_must_be_sender);
+
+                // Burst metrics.
+                cJSON *j_burst_metrics = cJSON_CreateArray();
+                struct stream_burst_metrics *bm;
+                SLIST_FOREACH(bm, &sp->burst_metrics, burst_metrics) {
+                  cJSON *j_bm = cJSON_CreateObject();
+                  cJSON_AddNumberToObject(j_bm, "start",
+                                          iperf_time_in_secs(&(bm->start)));
+                  cJSON_AddNumberToObject(j_bm, "end",
+                                          iperf_time_in_secs(&(bm->end)));
+                  cJSON_AddItemToArray(j_burst_metrics, j_bm);
+                }
+                cJSON_AddItemToObject(sender_info, "burst_metrics",
+                                      j_burst_metrics);
+
+                cJSON_AddItemToObject(json_summary_stream, report_sender,
+                                      sender_info);
+              } else if (test->role == 's' && !sp->sender) {
                 if (test->verbose)
                   iperf_printf(test, report_sender_not_available_format,
                                sp->socket);
@@ -4307,6 +4367,14 @@ void iperf_free_stream(struct iperf_stream *sp) {
     nirp = TAILQ_NEXT(irp, irlistentries);
     free(irp);
   }
+
+  // Free the burst_metrics list.
+  while (!SLIST_EMPTY(&sp->burst_metrics)) {
+    struct stream_burst_metrics *bm = SLIST_FIRST(&sp->burst_metrics);
+    SLIST_REMOVE_HEAD(&sp->burst_metrics, burst_metrics);
+    free(bm);
+  }
+
   free(sp->result);
   if (sp->send_timer != NULL) tmr_cancel(sp->send_timer);
   free(sp);

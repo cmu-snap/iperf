@@ -81,10 +81,29 @@ int iperf_tcp_send(struct iperf_stream *sp) {
 
   if (!sp->pending_size) sp->pending_size = sp->settings->blksize;
 
+  struct stream_burst_metrics *bm = malloc(sizeof(struct stream_burst_metrics));
+  iperf_time_now(&bm->start);
+
   if (sp->test->zerocopy)
     r = Nsendfile(sp->buffer_fd, sp->socket, sp->buffer, sp->pending_size);
   else
     r = Nwrite(sp->socket, sp->buffer, sp->pending_size, Ptcp);
+
+  iperf_time_now(&bm->end);
+  struct iperf_time diff;
+  if (iperf_time_diff(&bm->end, &bm->start, &diff) == 1) {
+    iperf_err(sp->test, "Error in time diff\n");
+  }
+  // Add new metrics to end of the burst_metrics list, which requires first
+  // finding the end of the metrics list.
+  struct stream_burst_metrics *n, *prev;
+  prev = NULL;
+  SLIST_FOREACH(n, &sp->burst_metrics, burst_metrics) { prev = n; }
+  if (prev) {
+    SLIST_INSERT_AFTER(prev, bm, burst_metrics);
+  } else {
+    SLIST_INSERT_HEAD(&sp->burst_metrics, bm, burst_metrics);
+  }
 
   if (r < 0) return r;
 

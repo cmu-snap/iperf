@@ -198,7 +198,10 @@ const char usage_longstr[] =
 #endif
     "  -t, --time      #         time in seconds to transmit for (default %d "
     "secs)\n"
-    "  -n, --bytes     #[KMG]    number of bytes to transmit (instead of -t)\n"
+    "  -n, --bytes     #[KMG]    number of bytes to transmit (per burst) "
+    "(instead of -t)\n"
+    "  --numbursts     #         number of bursts of --bytes to send\n"
+    "  --interburstus  #         time between bursts (microseconds)\n"
     "  -k, --blockcount #[KMG]   number of blocks (packets) to transmit "
     "(instead of -t or -n)\n"
     "  -l, --length    #[KMG]    length of buffer to read or write\n"

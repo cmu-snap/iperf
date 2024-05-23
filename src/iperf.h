@@ -187,6 +187,20 @@ struct iperf_settings {
       snd_timeout; /* Timeout for sending tcp messages in active mode, in us */
   struct iperf_time
       rcv_timeout; /* Timeout for receiving messages in active mode, in us */
+
+  // For scheduling. Burst "size" will reuse bytes above.
+  int num_bursts;
+  int inter_burst_time_us;
+};
+
+// For scheduling. Records burst start and end times. Used in struct
+// iperf_stream.
+struct stream_burst_metrics {
+  struct iperf_time start;
+  struct iperf_time end;
+
+  // Next
+  SLIST_ENTRY(stream_burst_metrics) burst_metrics;
 };
 
 struct iperf_test;
@@ -235,6 +249,11 @@ struct iperf_stream {
 
   struct sockaddr_storage local_addr;
   struct sockaddr_storage remote_addr;
+
+  // For scheduling.
+  atomic_iperf_size_t bytes_sent;
+  // Records burst start and end times.
+  SLIST_HEAD(blisthead, stream_burst_metrics) burst_metrics;
 
   int (*rcv)(struct iperf_stream *stream);
   int (*snd)(struct iperf_stream *stream);
@@ -377,6 +396,10 @@ struct iperf_test {
 
   atomic_iperf_size_t bytes_received;
   atomic_iperf_size_t blocks_received;
+
+  // For scheduling. Also see struct iperf_settings.
+  int burst_mode;
+  atomic_iperf_size_t bursts_sent;
 
   iperf_size_t
       bitrate_limit_stats_count; /* Number of stats periods accumulated for
