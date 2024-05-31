@@ -431,7 +431,7 @@ cleanup_server(struct iperf_test *test)
     SLIST_FOREACH(sp, &test->streams, streams) {
         int rc;
         sp->done = 1;
-	if (sp->thr != NULL) {
+	if (sp->thr) {
 	    rc = pthread_cancel(sp->thr);
 	    if (rc != 0 && rc != ESRCH) {
 	        i_errno = IEPTHREADCANCEL;

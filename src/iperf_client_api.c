@@ -761,7 +761,7 @@ cleanup_and_fail:
   SLIST_FOREACH(sp, &test->streams, streams) {
     sp->done = 1;
     int rc;
-    if (sp->thr != NULL) {
+    if (sp->thr) {
       rc = pthread_cancel(sp->thr);
       if (rc != 0 && rc != ESRCH) {
         i_errno = IEPTHREADCANCEL;
