@@ -665,8 +665,8 @@ int iperf_run_client(struct iperf_test *test) {
           usleep((unsigned int)test->settings->inter_burst_time_us);
 
           iperf_printf(test, "Starting burst %lu\n", test->bursts_sent + 1);
+          test->bytes_sent = 0;
           SLIST_FOREACH(sp, &test->streams, streams) {
-            test->bytes_sent = 0;
             if (sp->sender) {
               // This should trigger the sender threats to resume transmitting.
               sp->bytes_sent = 0;
