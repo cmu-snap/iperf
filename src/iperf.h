@@ -198,6 +198,7 @@ struct iperf_settings {
 struct stream_burst_metrics {
   struct iperf_time start;
   struct iperf_time end;
+  struct iperf_time dur;
 
   // Next
   SLIST_ENTRY(stream_burst_metrics) burst_metrics;

@@ -2260,10 +2260,12 @@ static int send_results(struct iperf_test *test) {
           struct stream_burst_metrics *bm;
           SLIST_FOREACH(bm, &sp->burst_metrics, burst_metrics) {
             cJSON *j_bm = cJSON_CreateObject();
-            cJSON_AddNumberToObject(j_bm, "start",
+            cJSON_AddNumberToObject(j_bm, "start_sec",
                                     iperf_time_in_secs(&(bm->start)));
-            cJSON_AddNumberToObject(j_bm, "end",
+            cJSON_AddNumberToObject(j_bm, "end_sec",
                                     iperf_time_in_secs(&(bm->end)));
+            cJSON_AddNumberToObject(j_bm, "dur_sec",
+                                    iperf_time_in_secs(&(bm->dur)));
             cJSON_AddItemToArray(j_burst_metrics, j_bm);
           }
           cJSON_AddItemToObject(j_stream, "burst_metrics", j_burst_metrics);
@@ -3648,22 +3650,22 @@ static void iperf_print_results(struct iperf_test *test) {
               if (test->json_output) {
                 // Basic sender info.
                 cJSON *sender_info = iperf_json_printf(
-                        "socket: %d  start: %f  end: %f  seconds: %f  bytes: "
-                        "%d  bits_per_second: %f  retransmits: %d  "
-                        "max_snd_cwnd:  %d  max_snd_wnd:  %d  max_rtt:  %d  "
-                        "min_rtt:  %d  mean_rtt:  %d sender: %b",
-                        (int64_t)sp->socket, (double)start_time,
-                        (double)sender_time, (double)sender_time,
-                        (int64_t)bytes_sent, bandwidth * 8,
-                        (int64_t)sp->result->stream_retrans,
-                        (int64_t)sp->result->stream_max_snd_cwnd,
-                        (int64_t)sp->result->stream_max_snd_wnd,
-                        (int64_t)sp->result->stream_max_rtt,
-                        (int64_t)sp->result->stream_min_rtt,
-                        (int64_t)((sp->result->stream_count_rtt == 0)
-                                      ? 0
-                                      : sp->result->stream_sum_rtt /
-                                            sp->result->stream_count_rtt),
+                    "socket: %d  start: %f  end: %f  seconds: %f  bytes: "
+                    "%d  bits_per_second: %f  retransmits: %d  "
+                    "max_snd_cwnd:  %d  max_snd_wnd:  %d  max_rtt:  %d  "
+                    "min_rtt:  %d  mean_rtt:  %d sender: %b",
+                    (int64_t)sp->socket, (double)start_time,
+                    (double)sender_time, (double)sender_time,
+                    (int64_t)bytes_sent, bandwidth * 8,
+                    (int64_t)sp->result->stream_retrans,
+                    (int64_t)sp->result->stream_max_snd_cwnd,
+                    (int64_t)sp->result->stream_max_snd_wnd,
+                    (int64_t)sp->result->stream_max_rtt,
+                    (int64_t)sp->result->stream_min_rtt,
+                    (int64_t)((sp->result->stream_count_rtt == 0)
+                                  ? 0
+                                  : sp->result->stream_sum_rtt /
+                                        sp->result->stream_count_rtt),
                     stream_must_be_sender);
 
                 // Burst metrics.
@@ -3671,10 +3673,12 @@ static void iperf_print_results(struct iperf_test *test) {
                 struct stream_burst_metrics *bm;
                 SLIST_FOREACH(bm, &sp->burst_metrics, burst_metrics) {
                   cJSON *j_bm = cJSON_CreateObject();
-                  cJSON_AddNumberToObject(j_bm, "start",
+                  cJSON_AddNumberToObject(j_bm, "start_sec",
                                           iperf_time_in_secs(&(bm->start)));
-                  cJSON_AddNumberToObject(j_bm, "end",
+                  cJSON_AddNumberToObject(j_bm, "end_sec",
                                           iperf_time_in_secs(&(bm->end)));
+                  cJSON_AddNumberToObject(j_bm, "dur_sec",
+                                          iperf_time_in_secs(&(bm->dur)));
                   cJSON_AddItemToArray(j_burst_metrics, j_bm);
                 }
                 cJSON_AddItemToObject(sender_info, "burst_metrics",

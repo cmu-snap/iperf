@@ -90,8 +90,7 @@ int iperf_tcp_send(struct iperf_stream *sp) {
     r = Nwrite(sp->socket, sp->buffer, sp->pending_size, Ptcp);
 
   iperf_time_now(&bm->end);
-  struct iperf_time diff;
-  if (iperf_time_diff(&bm->end, &bm->start, &diff) == 1) {
+  if (iperf_time_diff(&bm->end, &bm->start, &bm->dur == 1) {
     iperf_err(sp->test, "Error in time diff\n");
   }
   // Add new metrics to end of the burst_metrics list, which requires first
