@@ -100,6 +100,12 @@ int iperf_create_streams(struct iperf_test *test, int sender) {
     test->bind_port = orig_bind_port;
     if (s < 0) return -1;
 
+    // Socket enable blocking mode
+    if (setnonblocking(s, 0)) {
+      i_errno = IENONBLOCKING;
+      return -1;
+    }
+
 #if defined(HAVE_TCP_CONGESTION)
     if (test->protocol->id == Ptcp) {
       if (test->congestion) {
