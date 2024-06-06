@@ -89,11 +89,11 @@ timeout_connect(int s, const struct sockaddr *name, socklen_t namelen,
 	int ret;
 
 	flags = 0;
-	if (timeout != -1) {
-		flags = fcntl(s, F_GETFL, 0);
-		if (fcntl(s, F_SETFL, flags | O_NONBLOCK) == -1)
-			return -1;
-	}
+	// if (timeout != -1) {
+	// 	flags = fcntl(s, F_GETFL, 0);
+	// 	if (fcntl(s, F_SETFL, flags | O_NONBLOCK) == -1)
+	// 		return -1;
+	// }
 
 	if ((ret = connect(s, name, namelen)) != 0 && errno == EINPROGRESS) {
 		pfd.fd = s;
