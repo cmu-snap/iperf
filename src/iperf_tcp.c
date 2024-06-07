@@ -207,6 +207,11 @@ int iperf_tcp_listen(struct iperf_test *test) {
       return -1;
     }
 
+    if (setsockopt(s, SOL_SOCKET, SO_REUSEADDR, &(int){1}, sizeof(int)) == -1) {
+      printf("Error in setting SO_REUSEADDR\n");
+      return 1;
+    }
+
     if (test->no_delay) {
       opt = 1;
       if (setsockopt(s, IPPROTO_TCP, TCP_NODELAY, &opt, sizeof(opt)) < 0) {

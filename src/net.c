@@ -149,6 +149,11 @@ int create_socket(int domain, int proto, const char *local,
     return -1;
   }
 
+  if (setsockopt(s, SOL_SOCKET, SO_REUSEADDR, &(int){1}, sizeof(int)) == -1) {
+    printf("Error in setting SO_REUSEADDR\n");
+    return 1;
+  }
+
   if (bind_dev) {
 #if defined(HAVE_SO_BINDTODEVICE)
     if (setsockopt(s, SOL_SOCKET, SO_BINDTODEVICE, bind_dev, IFNAMSIZ) < 0)
@@ -285,6 +290,11 @@ int netannounce(int domain, int proto, const char *local, const char *bind_dev,
   if (s < 0) {
     freeaddrinfo(res);
     return -1;
+  }
+
+  if (setsockopt(s, SOL_SOCKET, SO_REUSEADDR, &(int){1}, sizeof(int)) == -1) {
+    printf("Error in setting SO_REUSEADDR\n");
+    return 1;
   }
 
   if (bind_dev) {
