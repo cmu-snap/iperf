@@ -157,6 +157,11 @@ int iperf_accept(struct iperf_test *test) {
     return -1;
   }
 
+  if (setsockopt(s, SOL_SOCKET, SO_REUSEADDR, &(int){1}, sizeof(int)) == -1) {
+    printf("Error in setting SO_REUSEADDR\n");
+    return 1;
+  }
+
   if (test->ctrl_sck == -1) {
     /* Server free, accept new client */
     test->ctrl_sck = s;
@@ -697,6 +702,12 @@ int iperf_run_server(struct iperf_test *test) {
           if ((s = test->protocol->accept(test)) < 0) {
             cleanup_server(test);
             return -1;
+          }
+
+          if (setsockopt(s, SOL_SOCKET, SO_REUSEADDR, &(int){1}, sizeof(int)) ==
+              -1) {
+            printf("Error in setting SO_REUSEADDR\n");
+            return 1;
           }
 
           /* apply other common socket options */
