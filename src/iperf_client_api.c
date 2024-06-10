@@ -669,13 +669,13 @@ int iperf_run_client(struct iperf_test *test) {
              test->blocks_received >= test->settings->blocks)))) {
         // Check if we need to start the next burst.
         ++test->bursts_sent;
-        iperf_printf(test, "Finished %lu bursts\n", test->bursts_sent);
+        printf(test, "Finished %lu bursts\n", test->bursts_sent);
         if (test->bursts_sent < test->settings->num_bursts) {
-          iperf_printf(test, "Inter-burst wait time: %d us\n",
-                       test->settings->inter_burst_time_us);
+          printf(test, "Inter-burst wait time: %d us\n",
+                 test->settings->inter_burst_time_us);
           usleep((unsigned int)test->settings->inter_burst_time_us);
 
-          iperf_printf(test, "Starting burst %lu\n", test->bursts_sent + 1);
+          printf(test, "Starting burst %lu\n", test->bursts_sent + 1);
           test->bytes_sent = 0;
           SLIST_FOREACH(sp, &test->streams, streams) {
             if (sp->sender) {
