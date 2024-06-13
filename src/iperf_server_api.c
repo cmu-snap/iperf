@@ -94,12 +94,9 @@ void *iperf_server_worker_run(void *s) {
       if (sp->bytes_received < test->settings->bytes) {
         continue;
       }
-      if (sp->done_post_req_compute) {
-        continue;
-      }
 
       // Do optional post-request compute for this stream.
-      if (test->post_req_compute_us) {
+      if (test->post_req_compute_us && !sp->done_post_req_compute) {
         struct stream_compute_metrics *cm =
             malloc(sizeof(struct stream_compute_metrics));
         iperf_time_now(&cm->start);
@@ -110,7 +107,6 @@ void *iperf_server_worker_run(void *s) {
         do {
           iperf_time_now(&now);
         } while (iperf_time_compare(&now, &target) >= 0);
-        sp->done_post_req_compute = 1;
 
         iperf_time_now(&cm->end);
         if (iperf_time_diff(&cm->end, &cm->start, &cm->dur) == 1) {
@@ -126,6 +122,8 @@ void *iperf_server_worker_run(void *s) {
         } else {
           SLIST_INSERT_HEAD(&sp->compute_metrics, cm, compute_metrics);
         }
+
+        sp->done_post_req_compute = 1;
       }
 
       // One stream will get this lock, perform the optional post burst compute,

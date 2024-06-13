@@ -2648,7 +2648,10 @@ struct iperf_test *iperf_new_test() {
   }
 
   if (pthread_mutex_init(&(test->print_mutex), &mutexattr) != 0) {
-    perror("iperf_new_test: pthread_mutex_init");
+    perror("iperf_new_test: pthread_mutex_init print_mutex");
+  }
+  if (pthread_mutex_init(&(test->burst_lock), &mutexattr) != 0) {
+    perror("iperf_new_test: pthread_mutex_init burst_lock");
   }
 
   pthread_mutexattr_destroy(&mutexattr);
