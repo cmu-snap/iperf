@@ -106,7 +106,7 @@ void *iperf_server_worker_run(void *s) {
         iperf_time_add_usecs(&target, test->post_req_compute_us);
         do {
           iperf_time_now(&now);
-        } while (iperf_time_compare(&now, &target) >= 0);
+        } while (iperf_time_compare(&now, &target) == -1);
 
         iperf_time_now(&cm->end);
         if (iperf_time_diff(&cm->end, &cm->start, &cm->dur) == 1) {
@@ -128,14 +128,14 @@ void *iperf_server_worker_run(void *s) {
 
       // One stream will get this lock, perform the optional post burst compute,
       // and reset all streams for the next burst.
-      if (pthread_mutex_trylock(&test->burst_lock)) {
+      if (!pthread_mutex_trylock(&test->burst_lock)) {
         // Check if all streams are done.
-        int all_streams_done = 0;
+        int all_streams_done = 1;
 
         struct iperf_stream *other_sp;
         SLIST_FOREACH(other_sp, &test->streams, streams) {
           if (other_sp->bytes_received < test->settings->bytes) {
-            all_streams_done = 1;
+            all_streams_done = 0;
             break;
           }
         }
@@ -149,7 +149,7 @@ void *iperf_server_worker_run(void *s) {
             iperf_time_add_usecs(&target, test->post_burst_compute_us);
             do {
               iperf_time_now(&now);
-            } while (iperf_time_compare(&now, &target) >= 0);
+            } while (iperf_time_compare(&now, &target) == -1);
           }
 
           // Reset all streams for the next burst.
