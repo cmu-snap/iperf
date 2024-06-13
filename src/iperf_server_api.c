@@ -82,17 +82,87 @@ void *iperf_server_worker_run(void *s) {
       if (iperf_recv_mt(sp) < 0) {
         goto cleanup_and_fail;
       }
-    }
-  }
-  // Busy-wait to simulate computing on the received data.
-  if (test->post_req_compute_us > 0) {
-    struct iperf_time target;
-    iperf_time_now(&target);
-    iperf_time_add_usecs(&target, test->post_req_compute_us);
-    struct iperf_time now;
-    while (1) {
-      iperf_time_now(&now);
-      if (iperf_time_compare(&now, &target) >= 0) break;
+
+      // Burst mode things, such as post-burst compute.
+      //
+      // We are not in burst mode, so there is not point in going further.
+      if (!test->settings->num_bursts) {
+        continue;
+      }
+      // This stream is not done yet, so there is no point in checking all of
+      // the other streams.
+      if (sp->bytes_received < test->settings->bytes) {
+        continue;
+      }
+      if (sp->done_post_req_compute) {
+        continue;
+      }
+
+      // Do optional post-request compute for this stream.
+      if (test->post_req_compute_us) {
+        struct stream_compute_metrics *cm =
+            malloc(sizeof(struct stream_compute_metrics));
+        iperf_time_now(&cm->start);
+
+        struct iperf_time target, now;
+        iperf_time_now(&target);
+        iperf_time_add_usecs(&target, test->post_req_compute_us);
+        do {
+          iperf_time_now(&now);
+        } while (iperf_time_compare(&now, &target) >= 0);
+        sp->done_post_req_compute = 1;
+
+        iperf_time_now(&cm->end);
+        if (iperf_time_diff(&cm->end, &cm->start, &cm->dur) == 1) {
+          iperf_err(sp->test, "Error in time diff\n");
+        }
+        // Add new metrics to end of the compute_metrics list, which requires
+        // first finding the end of the metrics list.
+        struct stream_compute_metrics *n, *prev;
+        prev = NULL;
+        SLIST_FOREACH(n, &sp->compute_metrics, compute_metrics) { prev = n; }
+        if (prev) {
+          SLIST_INSERT_AFTER(prev, cm, compute_metrics);
+        } else {
+          SLIST_INSERT_HEAD(&sp->compute_metrics, cm, compute_metrics);
+        }
+      }
+
+      // One stream will get this lock, perform the optional post burst compute,
+      // and reset all streams for the next burst.
+      if (pthread_mutex_trylock(&test->burst_lock)) {
+        // Check if all streams are done.
+        int all_streams_done = 0;
+
+        struct iperf_stream *other_sp;
+        SLIST_FOREACH(other_sp, &test->streams, streams) {
+          if (other_sp->bytes_received < test->settings->bytes) {
+            all_streams_done = 1;
+            break;
+          }
+        }
+
+        if (all_streams_done) {
+          // All streams are done with this burst, so we can do the optional
+          // post-burst compute.
+          if (test->post_burst_compute_us) {
+            struct iperf_time target, now;
+            iperf_time_now(&target);
+            iperf_time_add_usecs(&target, test->post_burst_compute_us);
+            do {
+              iperf_time_now(&now);
+            } while (iperf_time_compare(&now, &target) >= 0);
+          }
+
+          // Reset all streams for the next burst.
+          SLIST_FOREACH(other_sp, &test->streams, streams) {
+            other_sp->bytes_received = 0;
+            other_sp->done_post_req_compute = 0;
+          }
+        }
+
+        pthread_mutex_unlock(&test->burst_lock);
+      }
     }
   }
   return NULL;

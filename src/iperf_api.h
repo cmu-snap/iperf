@@ -103,7 +103,8 @@ typedef atomic_uint_fast64_t atomic_iperf_size_t;
 #define OPT_SND_TIMEOUT 28
 #define OPT_POST_RECV_COMPUTE 29
 #define OPT_POST_REQ_COMPUTE 30
-#define OPT_POST_TEST_COMPUTE 31
+#define OPT_POST_BURST_COMPUTE 31
+#define OPT_POST_TEST_COMPUTE 32
 
 /* states */
 #define TEST_START 1

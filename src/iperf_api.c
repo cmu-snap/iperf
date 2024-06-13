@@ -904,6 +904,8 @@ int iperf_parse_arguments(struct iperf_test *test, int argc, char **argv) {
       {"snd-timeout", required_argument, NULL, OPT_SND_TIMEOUT},
       {"post-recv-compute-us", required_argument, NULL, OPT_POST_RECV_COMPUTE},
       {"post-req-compute-us", required_argument, NULL, OPT_POST_REQ_COMPUTE},
+      {"post-burst-compute-us", required_argument, NULL,
+       OPT_POST_BURST_COMPUTE},
       {"post-test-compute-us", required_argument, NULL, OPT_POST_TEST_COMPUTE},
       {"debug", optional_argument, NULL, 'd'},
       {"help", no_argument, NULL, 'h'},
@@ -1422,6 +1424,10 @@ int iperf_parse_arguments(struct iperf_test *test, int argc, char **argv) {
         test->post_req_compute_us = atoi(optarg);
         printf("post_req_compute_us: %d\n", test->post_req_compute_us);
         break;
+      case OPT_POST_BURST_COMPUTE:
+        test->post_burst_compute_us = atoi(optarg);
+        printf("post_burst_compute_us: %d\n", test->post_burst_compute_us);
+        break;
       case OPT_POST_TEST_COMPUTE:
         test->post_test_compute_us = atoi(optarg);
         printf("post_test_compute_us: %d\n", test->post_test_compute_us);
@@ -1781,6 +1787,7 @@ int iperf_recv_mt(struct iperf_stream *sp) {
     return r;
   }
   test->bytes_received += r;
+  sp->bytes_received += r;
   ++test->blocks_received;
 
   return 0;

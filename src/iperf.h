@@ -204,6 +204,17 @@ struct stream_burst_metrics {
   SLIST_ENTRY(stream_burst_metrics) burst_metrics;
 };
 
+// For scheduling. Records post-burst compute start and end times. Used in
+// struct iperf_stream.
+struct stream_compute_metrics {
+  struct iperf_time start;
+  struct iperf_time end;
+  struct iperf_time dur;
+
+  // Next
+  SLIST_ENTRY(stream_compute_metrics) compute_metrics;
+};
+
 struct iperf_test;
 
 struct iperf_stream {
@@ -253,8 +264,10 @@ struct iperf_stream {
 
   // For scheduling.
   atomic_iperf_size_t bytes_sent;
-  // Records burst start and end times.
+  atomic_iperf_size_t bytes_received;
+  int done_post_req_compute;
   SLIST_HEAD(blisthead, stream_burst_metrics) burst_metrics;
+  SLIST_HEAD(clisthead, stream_compute_metrics) compute_metrics;
 
   int (*rcv)(struct iperf_stream *stream);
   int (*snd)(struct iperf_stream *stream);
@@ -401,6 +414,7 @@ struct iperf_test {
   // For scheduling. Also see struct iperf_settings.
   int burst_mode;
   atomic_iperf_size_t bursts_sent;
+  pthread_mutex_t burst_lock;
 
   iperf_size_t
       bitrate_limit_stats_count; /* Number of stats periods accumulated for
@@ -451,6 +465,7 @@ struct iperf_test {
 
   int post_recv_compute_us;
   int post_req_compute_us;
+  int post_burst_compute_us;
   int post_test_compute_us;
 
   /* Server output (use on server side only) */
