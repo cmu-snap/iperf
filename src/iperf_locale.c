@@ -172,7 +172,7 @@ const char usage_longstr[] =
     "  --post-recv-compute-us    time (in us) to busywait after each recv()\n"
     "  --post-req-compute-us     time (in us) to busywait after each "
     "individual stream finishes (see -P)\n"
-    "  --post-burst-compute-us     time (in us) to busywait after each "
+    "  --post-burst-compute-us   time (in us) to busywait after each "
     "burst finishes (see --numbursts)\n"
     "  --post-test-compute-us    time (in us) to busywait after the entire "
     "test finishes\n"
