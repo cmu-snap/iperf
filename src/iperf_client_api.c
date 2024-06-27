@@ -60,19 +60,45 @@ void *iperf_client_worker_run(void *s) {
   pthread_setcancelstate(PTHREAD_CANCEL_ENABLE, NULL);
 
   while (!(test->done) && !(sp->done)) {
+    // This outer loop will become the "run-one-burst" loop.
+
+    // Inside, we wait to get a message to start the next burst. This CANNOT be
+    // a busy wate. Instead, we wait on a condition variable. When the client
+    // receives a START_BURST message from the server, the controller thread
+    // calls broadcast to wake up all stream threads. test->send_burst_now is
+    // set to 1 when a burst should start and 0 all threads have sent their data
+    // for this burst. Enter the while loop (i.e., wait on the CV) if we SHOULD
+    // NOT be actively transmitting data for the current burst.
+    if (pthread_mutex_lock(&test->burst_lock) != 0) goto cleanup_and_fail;
+    while (!(test->send_burst_now && sp->bytes_sent < test->settings->bytes)) {
+      if (pthread_cond_wait(&test->burst_cv, &test->burst_lock) != 0)
+        goto cleanup_and_fail;
+      if (test->done || sp->done) goto cleanup_and_fail;
+    }
+    if (pthread_mutex_unlock(&test->burst_lock) != 0) goto cleanup_and_fail;
+    // Check if the test is over.
+    if (test->done || sp->done) goto cleanup_and_fail;
+    // Send the burst.
     if (sp->sender) {
       if (iperf_send_mt(sp) < 0) {
         goto cleanup_and_fail;
       }
     } else {
-      if (iperf_recv_mt(sp) < 0) {
-        goto cleanup_and_fail;
-      }
+      // We only support the client being the sender.
+      goto cleanup_and_fail;
     }
+    // Check if the burst is done so we can clear test->send_burst_now.
+    if (pthread_mutex_lock(&test->burst_lock) != 0) goto cleanup_and_fail;
+    test->bytes_sent += test->settings->bytes;
+    if (test->bytes_sent >= test->settings->bytes * test->num_streams) {
+      test->send_burst_now = 0;
+    }
+    if (pthread_mutex_unlock(&test->burst_lock) != 0) goto cleanup_and_fail;
   }
   return NULL;
 
 cleanup_and_fail:
+  pthread_mutex_unlock(&test->burst_lock);
   return NULL;
 }
 
@@ -331,6 +357,18 @@ int iperf_handle_message_client(struct iperf_test *test) {
       test->reporter_callback(test);
       test->state = oldstate;
       return -1;
+    case START_BURST:
+      printf("Starting burst %lu\n", test->bursts_sent + 1);
+      test->send_burst_now = 1;
+      test->bytes_sent = 0;
+      // Reset the bytes counter for each stream.
+      struct iperf_stream *sp;
+      SLIST_FOREACH(sp, &test->streams, streams) {
+        if (sp->sender) sp->bytes_sent = 0;
+      }
+      // Wake up the stream threads that are waiting to start the next burst.
+      if (pthread_cond_broadcast(&test->burst_cv) != 0) return -1;
+      break;
     case ACCESS_DENIED:
       i_errno = IEACCESSDENIED;
       return -1;
@@ -662,7 +700,7 @@ int iperf_run_client(struct iperf_test *test) {
       if ((!test->omitting) &&
           (test->done ||
            (test->settings->bytes != 0 &&
-            (test->bytes_sent >= test->settings->bytes ||
+            (test->bytes_sent >= test->settings->bytes * test->num_streams ||
              test->bytes_received >= test->settings->bytes)) ||
            (test->settings->blocks != 0 &&
             (test->blocks_sent >= test->settings->blocks ||
@@ -671,18 +709,7 @@ int iperf_run_client(struct iperf_test *test) {
         ++test->bursts_sent;
         printf("Finished %lu bursts\n", test->bursts_sent);
         if (test->bursts_sent < test->settings->num_bursts) {
-          printf("Inter-burst wait time: %d us\n",
-                 test->settings->inter_burst_time_us);
-          usleep((unsigned int)test->settings->inter_burst_time_us);
-
-          printf("Starting burst %lu\n", test->bursts_sent + 1);
-          test->bytes_sent = 0;
-          SLIST_FOREACH(sp, &test->streams, streams) {
-            if (sp->sender) {
-              // This should trigger the sender threats to resume transmitting.
-              sp->bytes_sent = 0;
-            }
-          }
+          // We need to wait for the receiver to request more bursts.
           continue;
         }
 

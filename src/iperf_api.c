@@ -1762,7 +1762,6 @@ int iperf_send_mt(struct iperf_stream *sp) {
           return r;
         }
         streams_active = 1;
-        test->bytes_sent += r;
         sp->bytes_sent += r;
         if (!sp->pending_size) ++test->blocks_sent;
         if (no_throttle_check) iperf_check_throttle(sp, &now);
@@ -2652,6 +2651,9 @@ struct iperf_test *iperf_new_test() {
   }
   if (pthread_mutex_init(&(test->burst_lock), NULL) != 0) {
     perror("iperf_new_test: pthread_mutex_init burst_lock");
+  }
+  if (pthread_cond_init(&(test->burst_cv), NULL) != 0) {
+    perror("iperf_new_test: pthread_cond_init burst_cv");
   }
 
   pthread_mutexattr_destroy(&mutexattr);

@@ -127,7 +127,7 @@ void *iperf_server_worker_run(void *s) {
       }
 
       // One stream will get this lock, perform the optional post burst compute,
-      // and reset all streams for the next burst.
+      // reset all streams for the next burst, and send a request to the sender.
       if (!pthread_mutex_trylock(&test->burst_lock)) {
         // Check if all streams are done.
         int all_streams_done = 1;
@@ -141,6 +141,7 @@ void *iperf_server_worker_run(void *s) {
         }
 
         if (all_streams_done) {
+          ++test->bursts_sent;
           // All streams are done with this burst, so we can do the optional
           // post-burst compute.
           if (test->post_burst_compute_us) {
@@ -152,10 +153,19 @@ void *iperf_server_worker_run(void *s) {
             } while (iperf_time_compare(&now, &target) == -1);
           }
 
-          // Reset all streams for the next burst.
-          SLIST_FOREACH(other_sp, &test->streams, streams) {
-            other_sp->bytes_received = 0;
-            other_sp->done_post_req_compute = 0;
+          // Do inter-burst wait.
+          if (test->bursts_sent < test->settings->num_bursts) {
+            printf("Inter-burst wait time: %d us\n",
+                   test->settings->inter_burst_time_us);
+            usleep((unsigned int)test->settings->inter_burst_time_us);
+            // Reset all streams for the next burst.
+            SLIST_FOREACH(other_sp, &test->streams, streams) {
+              other_sp->bytes_received = 0;
+              other_sp->done_post_req_compute = 0;
+            }
+            // Send a request to the sender to start the next burst.
+            Nwrite(test->ctrl_sck, (char *)START_BURST, sizeof(signed char),
+                   Ptcp);
           }
         }
 

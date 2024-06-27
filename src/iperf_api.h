@@ -123,6 +123,7 @@ typedef atomic_uint_fast64_t atomic_iperf_size_t;
 #define DISPLAY_RESULTS 14
 #define IPERF_START 15
 #define IPERF_DONE 16
+#define START_BURST 17
 #define ACCESS_DENIED (-1)
 #define SERVER_ERROR (-2)
 

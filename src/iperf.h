@@ -414,7 +414,9 @@ struct iperf_test {
   // For scheduling. Also see struct iperf_settings.
   int burst_mode;
   atomic_iperf_size_t bursts_sent;
+  int send_burst_now;
   pthread_mutex_t burst_lock;
+  pthread_cond_t burst_cv;
 
   iperf_size_t
       bitrate_limit_stats_count; /* Number of stats periods accumulated for
