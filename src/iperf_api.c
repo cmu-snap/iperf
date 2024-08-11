@@ -1789,6 +1789,22 @@ int iperf_recv_mt(struct iperf_stream *sp) {
   sp->bytes_received += r;
   ++test->blocks_received;
 
+  if (sp->bytes_received < sp->settings->bytes) {
+    // The current burst is not over yet.
+    return 0;
+  }
+
+  // This receive completed a burst for this stream, so record this stream's
+  // finish time in the stream_burst_metrics entry in receiver_burst_metrics.
+  // Add new metrics to end of the compute_metrics list, which requires
+  // first finding the end of the metrics list.
+  struct stream_compute_metrics *n;
+  SLIST_FOREACH(n, &sp->compute_metrics, compute_metrics) { }
+  iperf_time_now(&n->end);
+  if (iperf_time_diff(&n->end, &n->start, &n->dur) == 1) {
+    iperf_err(sp->test, "Error in time diff\n");
+  }
+
   return 0;
 }
 
@@ -2262,9 +2278,10 @@ static int send_results(struct iperf_test *test) {
           cJSON_AddNumberToObject(j_stream, "end_time", end_time);
 
           // Add burst metrics
-          cJSON *j_burst_metrics = cJSON_CreateArray();
+          // Sender
+          cJSON *j_sender_burst_metrics = cJSON_CreateArray();
           struct stream_burst_metrics *bm;
-          SLIST_FOREACH(bm, &sp->burst_metrics, burst_metrics) {
+          SLIST_FOREACH(bm, &sp->sender_burst_metrics, sender_burst_metrics) {
             cJSON *j_bm = cJSON_CreateObject();
             cJSON_AddNumberToObject(j_bm, "start_sec",
                                     iperf_time_in_secs(&(bm->start)));
@@ -2272,9 +2289,22 @@ static int send_results(struct iperf_test *test) {
                                     iperf_time_in_secs(&(bm->end)));
             cJSON_AddNumberToObject(j_bm, "dur_sec",
                                     iperf_time_in_secs(&(bm->dur)));
-            cJSON_AddItemToArray(j_burst_metrics, j_bm);
+            cJSON_AddItemToArray(j_sender_burst_metrics, j_bm);
           }
-          cJSON_AddItemToObject(j_stream, "burst_metrics", j_burst_metrics);
+          cJSON_AddItemToObject(j_stream, "sender_burst_metrics", j_sender_burst_metrics);
+          // Receiver
+          cJSON *j_receiver_burst_metrics = cJSON_CreateArray();
+          SLIST_FOREACH(bm, &sp->receiver_burst_metrics, receiver_burst_metrics) {
+            cJSON *j_bm = cJSON_CreateObject();
+            cJSON_AddNumberToObject(j_bm, "start_sec",
+                                    iperf_time_in_secs(&(bm->start)));
+            cJSON_AddNumberToObject(j_bm, "end_sec",
+                                    iperf_time_in_secs(&(bm->end)));
+            cJSON_AddNumberToObject(j_bm, "dur_sec",
+                                    iperf_time_in_secs(&(bm->dur)));
+            cJSON_AddItemToArray(j_receiver_burst_metrics, j_bm);
+          }
+          cJSON_AddItemToObject(j_stream, "reciever_burst_metrics", j_receiver_burst_metrics);
         }
       }
       if (r == 0 && test->debug) {
@@ -3681,9 +3711,10 @@ static void iperf_print_results(struct iperf_test *test) {
                     stream_must_be_sender);
 
                 // Burst metrics.
-                cJSON *j_burst_metrics = cJSON_CreateArray();
+                // Sender
+                cJSON *j_sender_burst_metrics = cJSON_CreateArray();
                 struct stream_burst_metrics *bm;
-                SLIST_FOREACH(bm, &sp->burst_metrics, burst_metrics) {
+                SLIST_FOREACH(bm, &sp->sender_burst_metrics, sender_burst_metrics) {
                   cJSON *j_bm = cJSON_CreateObject();
                   cJSON_AddNumberToObject(j_bm, "start_sec",
                                           iperf_time_in_secs(&(bm->start)));
@@ -3691,10 +3722,24 @@ static void iperf_print_results(struct iperf_test *test) {
                                           iperf_time_in_secs(&(bm->end)));
                   cJSON_AddNumberToObject(j_bm, "dur_sec",
                                           iperf_time_in_secs(&(bm->dur)));
-                  cJSON_AddItemToArray(j_burst_metrics, j_bm);
+                  cJSON_AddItemToArray(j_sender_burst_metrics, j_bm);
                 }
-                cJSON_AddItemToObject(sender_info, "burst_metrics",
-                                      j_burst_metrics);
+                cJSON_AddItemToObject(sender_info, "sender_burst_metrics",
+                                      j_sender_burst_metrics);
+                // Receiver
+                cJSON *j_receiver_burst_metrics = cJSON_CreateArray();
+                SLIST_FOREACH(bm, &sp->receiver_burst_metrics, receiver_burst_metrics) {
+                  cJSON *j_bm = cJSON_CreateObject();
+                  cJSON_AddNumberToObject(j_bm, "start_sec",
+                                          iperf_time_in_secs(&(bm->start)));
+                  cJSON_AddNumberToObject(j_bm, "end_sec",
+                                          iperf_time_in_secs(&(bm->end)));
+                  cJSON_AddNumberToObject(j_bm, "dur_sec",
+                                          iperf_time_in_secs(&(bm->dur)));
+                  cJSON_AddItemToArray(j_receiver_burst_metrics, j_bm);
+                }
+                cJSON_AddItemToObject(sender_info, "receiver_burst_metrics",
+                                      j_receiver_burst_metrics);
 
                 cJSON_AddItemToObject(json_summary_stream, report_sender,
                                       sender_info);
@@ -4385,9 +4430,14 @@ void iperf_free_stream(struct iperf_stream *sp) {
   }
 
   // Free the burst_metrics list.
-  while (!SLIST_EMPTY(&sp->burst_metrics)) {
-    struct stream_burst_metrics *bm = SLIST_FIRST(&sp->burst_metrics);
-    SLIST_REMOVE_HEAD(&sp->burst_metrics, burst_metrics);
+  while (!SLIST_EMPTY(&sp->sender_burst_metrics)) {
+    struct stream_burst_metrics *bm = SLIST_FIRST(&sp->sender_burst_metrics);
+    SLIST_REMOVE_HEAD(&sp->sender_burst_metrics, sender_burst_metrics);
+    free(bm);
+  }
+  while (!SLIST_EMPTY(&sp->receiver_burst_metrics)) {
+    struct stream_burst_metrics *bm = SLIST_FIRST(&sp->receiver_burst_metrics);
+    SLIST_REMOVE_HEAD(&sp->receiver_burst_metrics, receiver_burst_metrics);
     free(bm);
   }
 

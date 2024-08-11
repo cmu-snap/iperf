@@ -66,7 +66,7 @@ void *iperf_client_worker_run(void *s) {
     // a busy wate. Instead, we wait on a condition variable. When the client
     // receives a START_BURST message from the server, the controller thread
     // calls broadcast to wake up all stream threads. test->send_burst_now is
-    // set to 1 when a burst should start and 0 all threads have sent their data
+    // set to 1 when a burst should start and 0 when all threads have sent their data
     // for this burst. Enter the while loop (i.e., wait on the CV) if we SHOULD
     // NOT be actively transmitting data for the current burst.
     if (pthread_mutex_lock(&test->burst_lock) != 0) goto cleanup_and_fail;
@@ -84,7 +84,8 @@ void *iperf_client_worker_run(void *s) {
         goto cleanup_and_fail;
       }
     } else {
-      // We only support the client being the sender.
+      // Error: We only support the client being the sender, but this is the client and
+      // we have been asked to receive!
       goto cleanup_and_fail;
     }
     // Check if the burst is done so we can clear test->send_burst_now.

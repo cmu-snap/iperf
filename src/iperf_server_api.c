@@ -75,9 +75,8 @@ void *iperf_server_worker_run(void *s) {
 
   while (!(test->done) && !(sp->done)) {
     if (sp->sender) {
-      if (iperf_send_mt(sp) < 0) {
-        goto cleanup_and_fail;
-      }
+      // Error: We only support the client being the sender, but this is the server!
+      goto cleanup_and_fail;
     } else {
       if (iperf_recv_mt(sp) < 0) {
         goto cleanup_and_fail;
@@ -126,8 +125,9 @@ void *iperf_server_worker_run(void *s) {
         sp->done_post_req_compute = 1;
       }
 
-      // One stream will get this lock, perform the optional post burst compute,
-      // reset all streams for the next burst, and send a request to the sender.
+      // One stream will get this lock and act as the orchestrator that kicks off the 
+      // next burst. It will perform the optional post burst compute, reset all streams 
+      // for the next burst, and send a request to the sender.
       if (!pthread_mutex_trylock(&test->burst_lock)) {
         // Check if all streams are done.
         int all_streams_done = 1;
@@ -155,17 +155,39 @@ void *iperf_server_worker_run(void *s) {
 
           // Do inter-burst wait.
           if (test->bursts_sent < test->settings->num_bursts) {
-            printf("Inter-burst wait time: %d us\n",
-                   test->settings->inter_burst_time_us);
-            usleep((unsigned int)test->settings->inter_burst_time_us);
             // Reset all streams for the next burst.
             SLIST_FOREACH(other_sp, &test->streams, streams) {
               other_sp->bytes_received = 0;
               other_sp->done_post_req_compute = 0;
             }
+
+            printf("Inter-burst wait time: %d us\n",
+                   test->settings->inter_burst_time_us);
+            usleep((unsigned int)test->settings->inter_burst_time_us);
+
+            // For all streams, create a new stream_burst_metrics to time this 
+            // burst (receiver-based timing) and set its start time.
+            SLIST_FOREACH(other_sp, &test->streams, streams) {
+              // Allocate a new stream_burst_metrics struct and initialize it to 0.
+              struct stream_burst_metrics *bm = malloc(sizeof(struct stream_burst_metrics));
+              memset(bm, 0, sizeof(struct stream_burst_metrics));
+              iperf_time_now(&bm->start);
+
+              // Add new metrics to end of the stream_burst_metrics list, which requires first
+              // finding the end of the metrics list.
+              struct stream_burst_metrics *n, *prev;
+              prev = NULL;
+              SLIST_FOREACH(n, &other_sp->receiver_burst_metrics, receiver_burst_metrics) { prev = n; }
+              if (prev) {
+                SLIST_INSERT_AFTER(prev, bm, receiver_burst_metrics);
+              } else {
+                SLIST_INSERT_HEAD(&other_sp->sender_burst_metrics, bm, receiver_burst_metrics);
+              }
+            }
+
             // Send a request to the sender to start the next burst.
             Nwrite(test->ctrl_sck, (char *)START_BURST, sizeof(signed char),
-                   Ptcp);
+                  Ptcp);
           }
         }
 

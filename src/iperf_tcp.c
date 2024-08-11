@@ -68,7 +68,7 @@ int iperf_tcp_recv(struct iperf_stream *sp) {
   } else {
     if (sp->test->debug) printf("Late receive, state = %d\n", sp->test->state);
   }
-
+  
   return r;
 }
 
@@ -81,7 +81,7 @@ int iperf_tcp_send(struct iperf_stream *sp) {
 
   if (!sp->pending_size) sp->pending_size = sp->settings->blksize;
 
-  // If in burst mode, then measure send time.
+  // If in burst mode (num_bursts > 1), then measure send time.
   struct stream_burst_metrics *bm;
   if (sp->test->settings->num_bursts > 1) {
     bm = malloc(sizeof(struct stream_burst_metrics));
@@ -93,7 +93,7 @@ int iperf_tcp_send(struct iperf_stream *sp) {
   else
     r = Nwrite(sp->socket, sp->buffer, sp->pending_size, Ptcp);
 
-  // If in burst mode, then measure transmit time.
+  // If in burst mode (num_bursts > 1), then measure transmit time.
   if (sp->test->settings->num_bursts > 1) {
     if (bm) {
       iperf_time_now(&bm->end);
@@ -104,11 +104,11 @@ int iperf_tcp_send(struct iperf_stream *sp) {
       // finding the end of the metrics list.
       struct stream_burst_metrics *n, *prev;
       prev = NULL;
-      SLIST_FOREACH(n, &sp->burst_metrics, burst_metrics) { prev = n; }
+      SLIST_FOREACH(n, &sp->sender_burst_metrics, sender_burst_metrics) { prev = n; }
       if (prev) {
-        SLIST_INSERT_AFTER(prev, bm, burst_metrics);
+        SLIST_INSERT_AFTER(prev, bm, sender_burst_metrics);
       } else {
-        SLIST_INSERT_HEAD(&sp->burst_metrics, bm, burst_metrics);
+        SLIST_INSERT_HEAD(&sp->sender_burst_metrics, bm, sender_burst_metrics);
       }
     } else {
       printf("error in measuring burst time\n");
