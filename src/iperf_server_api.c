@@ -773,6 +773,7 @@ int iperf_run_server(struct iperf_test *test) {
     if (result > 0) {
       if (FD_ISSET(test->listener, &read_set)) {
         if (test->state != CREATE_STREAMS) {
+          printf("server 1\n");
           if (iperf_accept(test) < 0) {
             cleanup_server(test);
             return -1;
@@ -793,6 +794,7 @@ int iperf_run_server(struct iperf_test *test) {
         }
       }
       if (FD_ISSET(test->ctrl_sck, &read_set)) {
+        printf("server 2\n");
         if (iperf_handle_message_server(test) < 0) {
           cleanup_server(test);
           return -1;
@@ -801,6 +803,7 @@ int iperf_run_server(struct iperf_test *test) {
       }
 
       if (test->state == CREATE_STREAMS) {
+        printf("server 3\n");
         if (FD_ISSET(test->prot_listener, &read_set)) {
           if ((s = test->protocol->accept(test)) < 0) {
             cleanup_server(test);
