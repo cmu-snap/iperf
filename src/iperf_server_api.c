@@ -1005,8 +1005,10 @@ int iperf_run_server(struct iperf_test *test) {
             i_errno = IEPTHREADATTRINIT;
             cleanup_server(test);
           };
+          printf("server 6\n");
 
           SLIST_FOREACH(sp, &test->streams, streams) {
+            printf("server 7\n");
             if (pthread_create(&(sp->thr), &attr, &iperf_server_worker_run,
                                sp) != 0) {
               i_errno = IEPTHREADCREATE;
