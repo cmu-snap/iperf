@@ -29,6 +29,7 @@
 
 #include <sys/time.h>
 #include <sys/types.h>
+#include <stdio.h>
 
 #include "iperf_config.h"
 #ifdef HAVE_STDINT_H
