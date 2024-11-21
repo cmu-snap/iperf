@@ -1031,10 +1031,14 @@ int iperf_run_server(struct iperf_test *test) {
 
           // Test is now in TEST_RUNNING state and all worker threads are up. 
           // Send a message to start the first burst. 
-          printf("Sending first START_BURST...\n");              
-          Nwrite(test->ctrl_sck, (char *)START_BURST, sizeof(signed char),
-                  Ptcp);
-          printf("Sent first START_BURST\n");              
+          printf("Sending first START_BURST...\n");   
+          if (iperf_set_send_state(test, START_BURST) != 0) {           
+            printf("Sent first START_BURST ERROR\n");              
+          } else {
+            printf("Sent first START_BURST SUCCESS\n");              
+          }
+          // Nwrite(test->ctrl_sck, (char *)START_BURST, sizeof(signed char),
+          //         Ptcp);
         }
       }
     }

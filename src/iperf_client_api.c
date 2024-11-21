@@ -295,6 +295,7 @@ static int create_client_omit_timer(struct iperf_test *test) {
 }
 
 int iperf_handle_message_client(struct iperf_test *test) {
+  printf("iperf_handle_message_client\n");
   int rval;
   int32_t err;
 
@@ -317,10 +318,12 @@ int iperf_handle_message_client(struct iperf_test *test) {
 
   switch (test->state) {
     case PARAM_EXCHANGE:
+      printf("client PARAM_EXCHANGE\n");
       if (iperf_exchange_parameters(test) < 0) return -1;
       if (test->on_connect) test->on_connect(test);
       break;
     case CREATE_STREAMS:
+      printf("client CREATE_STREAMS\n");
       if (test->mode == BIDIRECTIONAL) {
         if (iperf_create_streams(test, 1) < 0) return -1;
         if (iperf_create_streams(test, 0) < 0) return -1;
@@ -328,6 +331,7 @@ int iperf_handle_message_client(struct iperf_test *test) {
         return -1;
       break;
     case TEST_START:
+      printf("client TEST_START\n");
       if (iperf_init_test(test) < 0) return -1;
       if (create_client_timers(test) < 0) return -1;
       if (create_client_omit_timer(test) < 0) return -1;
@@ -335,17 +339,22 @@ int iperf_handle_message_client(struct iperf_test *test) {
         if (iperf_create_send_timers(test) < 0) return -1;
       break;
     case TEST_RUNNING:
+      printf("client TEST_RUNNING\n");
       break;
     case EXCHANGE_RESULTS:
+      printf("client EXCHANGE_RESULTS\n");
       if (iperf_exchange_results(test) < 0) return -1;
       break;
     case DISPLAY_RESULTS:
+      printf("client DISPLAY_RESULTS\n");
       if (test->on_test_finish) test->on_test_finish(test);
       iperf_client_end(test);
       break;
     case IPERF_DONE:
+      printf("client IPERF_DONE\n");
       break;
     case SERVER_TERMINATE:
+      printf("client SERVER_TERMINATE\n");
       i_errno = IESERVERTERM;
 
       /*
@@ -359,6 +368,7 @@ int iperf_handle_message_client(struct iperf_test *test) {
       test->state = oldstate;
       return -1;
     case START_BURST:
+      printf("client START_BURST\n");
       printf("Starting burst %lu\n", test->bursts_sent + 1);
       test->send_burst_now = 1;
       test->bytes_sent = 0;
@@ -372,9 +382,11 @@ int iperf_handle_message_client(struct iperf_test *test) {
       if (pthread_cond_broadcast(&test->burst_cv) != 0) return -1;
       break;
     case ACCESS_DENIED:
+      printf("client ACCESS_DENIED\n");
       i_errno = IEACCESSDENIED;
       return -1;
     case SERVER_ERROR:
+      printf("client SERVER_ERROR\n");
       if (Nread(test->ctrl_sck, (char *)&err, sizeof(err), Ptcp) < 0) {
         i_errno = IECTRLREAD;
         return -1;
@@ -387,6 +399,7 @@ int iperf_handle_message_client(struct iperf_test *test) {
       errno = ntohl(err);
       return -1;
     default:
+      printf("client DEFAULT\n");
       i_errno = IEMESSAGE;
       return -1;
   }
@@ -593,7 +606,7 @@ int iperf_run_client(struct iperf_test *test) {
 
   startup = 1;
   while (test->state != IPERF_DONE) {
-    printf("Server client...\n");
+    printf("Client looping...\n");
     memcpy(&read_set, &test->read_set, sizeof(fd_set));
     memcpy(&write_set, &test->write_set, sizeof(fd_set));
     iperf_time_now(&now);
@@ -601,6 +614,7 @@ int iperf_run_client(struct iperf_test *test) {
 
     // In reverse active mode client ensures data is received
     if (test->state == TEST_RUNNING && rcv_timeout_us > 0) {
+      printf("client 1\n");
       timeout_us = -1;
       if (timeout != NULL) {
         used_timeout.tv_sec = timeout->tv_sec;
@@ -641,7 +655,7 @@ int iperf_run_client(struct iperf_test *test) {
         }
       }
     }
-
+    printf("client 2\n");
     /* See if the test is making progress */
     if (test->blocks_received > last_receive_blocks) {
       last_receive_blocks = test->blocks_received;
@@ -649,6 +663,7 @@ int iperf_run_client(struct iperf_test *test) {
     }
 
     if (result > 0) {
+      printf("client 3\n");
       if (FD_ISSET(test->ctrl_sck, &read_set)) {
         if (iperf_handle_message_client(test) < 0) {
           goto cleanup_and_fail;
@@ -658,6 +673,7 @@ int iperf_run_client(struct iperf_test *test) {
     }
 
     if (test->state == TEST_RUNNING) {
+      printf("client 4\n");
       /* Is this our first time really running? */
       if (startup) {
         startup = 0;
@@ -675,13 +691,15 @@ int iperf_run_client(struct iperf_test *test) {
             i_errno = IEPTHREADCREATE;
             goto cleanup_and_fail;
           }
-          if (test->debug_level >= DEBUG_LEVEL_INFO) {
-            iperf_printf(test, "Thread FD %d created\n", sp->socket);
-          }
+          // if (test->debug_level >= DEBUG_LEVEL_INFO) {
+            // iperf_printf(test, "Thread FD %d created\n", sp->socket);
+          printf("Thread FD %d created\n", sp->socket);
+          // }
         }
-        if (test->debug_level >= DEBUG_LEVEL_INFO) {
-          iperf_printf(test, "All threads created\n");
-        }
+        // if (test->debug_level >= DEBUG_LEVEL_INFO) {
+          // iperf_printf(test, "All threads created\n");
+        printf("All threads created\n");
+        // }
         if (pthread_attr_destroy(&attr) != 0) {
           i_errno = IEPTHREADATTRDESTROY;
           goto cleanup_and_fail;
@@ -691,6 +709,8 @@ int iperf_run_client(struct iperf_test *test) {
       /* Run the timers. */
       iperf_time_now(&now);
       tmr_run(&now);
+
+      printf("client 5\n");
 
       /*
        * Is the test done yet?  We have to be out of omitting
