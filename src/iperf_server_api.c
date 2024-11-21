@@ -658,6 +658,7 @@ int iperf_run_server(struct iperf_test *test) {
                    test->settings->rcv_timeout.usecs;
 
   while (test->state != IPERF_DONE) {
+    printf("Server looping...\n");
     // Check if average transfer rate was exceeded (condition set in the
     // callback routines)
     if (test->bitrate_limit_exceeded) {

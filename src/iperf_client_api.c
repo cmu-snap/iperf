@@ -593,6 +593,7 @@ int iperf_run_client(struct iperf_test *test) {
 
   startup = 1;
   while (test->state != IPERF_DONE) {
+    printf("Server client...\n");
     memcpy(&read_set, &test->read_set, sizeof(fd_set));
     memcpy(&write_set, &test->write_set, sizeof(fd_set));
     iperf_time_now(&now);
