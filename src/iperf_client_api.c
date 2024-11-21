@@ -367,7 +367,7 @@ int iperf_handle_message_client(struct iperf_test *test) {
       SLIST_FOREACH(sp, &test->streams, streams) {
         if (sp->sender) sp->bytes_sent = 0;
       }
-      // TODO: Check validity: make sure we are no currently in the middle of sending a burst?
+      // TODO: Check validity: make sure we are not currently in the middle of sending a burst?
       // Wake up the stream threads that are waiting to start the next burst.
       if (pthread_cond_broadcast(&test->burst_cv) != 0) return -1;
       break;

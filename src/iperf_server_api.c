@@ -186,6 +186,8 @@ void *iperf_server_worker_run(void *s) {
             }
 
             // Send a request to the sender to start the next burst.
+            // TODO: Do we need to send a request to all senders? No. There is still only one sender, which is sent one request and it starts all flows in the next burst.
+            // TODO: Need to send a START_BURST message for the first burst?
             Nwrite(test->ctrl_sck, (char *)START_BURST, sizeof(signed char),
                   Ptcp);
           }
@@ -1006,16 +1008,22 @@ int iperf_run_server(struct iperf_test *test) {
               return -1;
             }
             if (test->debug_level >= DEBUG_LEVEL_INFO) {
-              iperf_printf(test, "Thread FD %d created\n", sp->socket);
+              printf(test, "Thread FD %d created\n", sp->socket);
             }
           }
           if (test->debug_level >= DEBUG_LEVEL_INFO) {
-            iperf_printf(test, "All threads created\n");
+            printf(test, "All threads created\n");
           }
           if (pthread_attr_destroy(&attr) != 0) {
             i_errno = IEPTHREADATTRDESTROY;
             cleanup_server(test);
           };
+
+          // Test is now in TEST_RUNNING state and all worker threads are up. 
+          // Send a message to start the first burst. 
+          Nwrite(test->ctrl_sck, (char *)START_BURST, sizeof(signed char),
+                  Ptcp);
+          printf(test, "Sent first START_BURST\n");              
         }
       }
     }
