@@ -1013,14 +1013,16 @@ int iperf_run_server(struct iperf_test *test) {
                                sp) != 0) {
               i_errno = IEPTHREADCREATE;
               cleanup_server(test);
+              printf("server 8 returning\n");
               return -1;
             }
             // if (test->debug_level >= DEBUG_LEVEL_INFO) {
-            printf(test, "Thread FD %d created\n", sp->socket);
+            // iperf_printf(test, "Thread FD %d created\n", sp->socket);
+            printf("Thread FD %d created\n", sp->socket);
             // }
           }
           // if (test->debug_level >= DEBUG_LEVEL_INFO) {
-          printf(test, "All threads created\n");
+          printf("All threads created\n");
           // }
           if (pthread_attr_destroy(&attr) != 0) {
             i_errno = IEPTHREADATTRDESTROY;
@@ -1029,10 +1031,10 @@ int iperf_run_server(struct iperf_test *test) {
 
           // Test is now in TEST_RUNNING state and all worker threads are up. 
           // Send a message to start the first burst. 
-          printf(test, "Sending first START_BURST...\n");              
+          printf("Sending first START_BURST...\n");              
           Nwrite(test->ctrl_sck, (char *)START_BURST, sizeof(signed char),
                   Ptcp);
-          printf(test, "Sent first START_BURST\n");              
+          printf("Sent first START_BURST\n");              
         }
       }
     }
