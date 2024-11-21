@@ -910,6 +910,7 @@ int iperf_run_server(struct iperf_test *test) {
             }
 
             if (flag != -1) {
+              printf("server 4 new stream\n");
               sp = iperf_new_stream(test, s, flag);
               if (!sp) {
                 cleanup_server(test);
@@ -998,6 +999,7 @@ int iperf_run_server(struct iperf_test *test) {
           }
 
           /* Create and spin up threads */
+          printf("server 5 spin up threads\n");
           pthread_attr_t attr;
           if (pthread_attr_init(&attr) != 0) {
             i_errno = IEPTHREADATTRINIT;
