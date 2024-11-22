@@ -1049,6 +1049,8 @@ int iperf_run_server(struct iperf_test *test) {
           printf("Sending first START_BURST...\n");   
           if (iperf_set_send_state(test, START_BURST) != 0) {           
             printf("Sent first START_BURST ERROR\n");              
+            cleanup_server(test);
+            return -1;
           } else {
             printf("Sent first START_BURST SUCCESS\n");              
           }
@@ -1056,6 +1058,8 @@ int iperf_run_server(struct iperf_test *test) {
           // Reset state to running.
           if (iperf_set_send_state(test, TEST_RUNNING) != 0) {           
             printf("Sent reset TEST_RUNNING ERROR\n");              
+            cleanup_server(test);
+            return -1;
           } else {
             printf("Sent reset TEST_RUNNING SUCCESS\n");              
           }
