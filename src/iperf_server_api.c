@@ -707,6 +707,7 @@ int iperf_run_server(struct iperf_test *test) {
 
     printf("server 0.9\n");
     printf("server test: %d\n", test);
+    printf("server test->max_fd + 1: %d\n", test->max_fd + 1);
     printf("server timeout: %d\n", timeout);
 
     result = select(test->max_fd + 1, &read_set, &write_set, NULL, timeout);
@@ -1045,19 +1046,19 @@ int iperf_run_server(struct iperf_test *test) {
 
           // Test is now in TEST_RUNNING state and all worker threads are up. 
           // Send a message to start the first burst. 
-          // printf("Sending first START_BURST...\n");   
-          // if (iperf_set_send_state(test, START_BURST) != 0) {           
-          //   printf("Sent first START_BURST ERROR\n");              
-          // } else {
-          //   printf("Sent first START_BURST SUCCESS\n");              
-          // }
+          printf("Sending first START_BURST...\n");   
+          if (iperf_set_send_state(test, START_BURST) != 0) {           
+            printf("Sent first START_BURST ERROR\n");              
+          } else {
+            printf("Sent first START_BURST SUCCESS\n");              
+          }
 
-          // // Reset state to running.
-          // if (iperf_set_send_state(test, TEST_RUNNING) != 0) {           
-          //   printf("Sent reset TEST_RUNNING ERROR\n");              
-          // } else {
-          //   printf("Sent reset TEST_RUNNING SUCCESS\n");              
-          // }
+          // Reset state to running.
+          if (iperf_set_send_state(test, TEST_RUNNING) != 0) {           
+            printf("Sent reset TEST_RUNNING ERROR\n");              
+          } else {
+            printf("Sent reset TEST_RUNNING SUCCESS\n");              
+          }
           // Nwrite(test->ctrl_sck, (char *)START_BURST, sizeof(signed char),
           //         Ptcp);
         }

@@ -1653,6 +1653,9 @@ int iperf_set_send_state(struct iperf_test *test, signed char state) {
       i_errno = IESENDMESSAGE;
       return -1;
     }
+  } else {
+    i_errno = IECTRLWRITE;
+    return -1;
   }
   return 0;
 }
