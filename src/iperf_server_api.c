@@ -1051,6 +1051,13 @@ int iperf_run_server(struct iperf_test *test) {
           } else {
             printf("Sent first START_BURST SUCCESS\n");              
           }
+
+          // Reset state to running.
+          if (iperf_set_send_state(test, TEST_RUNNING) != 0) {           
+            printf("Sent reset TEST_RUNNING ERROR\n");              
+          } else {
+            printf("Sent reset TEST_RUNNING SUCCESS\n");              
+          }
           // Nwrite(test->ctrl_sck, (char *)START_BURST, sizeof(signed char),
           //         Ptcp);
         }
