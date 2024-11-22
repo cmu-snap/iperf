@@ -708,7 +708,9 @@ int iperf_run_server(struct iperf_test *test) {
     printf("server 0.9\n");
 
     result = select(test->max_fd + 1, &read_set, &write_set, NULL, timeout);
+    printf("server 0.901\n");
     if (result < 0 && errno != EINTR) {
+      printf("server 0.91\n");
       cleanup_server(test);
       i_errno = IESELECT;
       return -1;
