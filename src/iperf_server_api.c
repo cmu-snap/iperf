@@ -713,6 +713,7 @@ int iperf_run_server(struct iperf_test *test) {
       i_errno = IESELECT;
       return -1;
     } else if (result == 0) {
+      printf("server 0.92\n");
       /*
        * If nothing was received during the specified time (per
        * state) then probably something got stuck either at the
@@ -770,6 +771,7 @@ int iperf_run_server(struct iperf_test *test) {
       }
     }
 
+    printf("server 0.99\n");
     /* See if the test is making progress */
     if (test->blocks_received > last_receive_blocks) {
       last_receive_blocks = test->blocks_received;
@@ -777,6 +779,7 @@ int iperf_run_server(struct iperf_test *test) {
     }
 
     if (result > 0) {
+      printf("server 1.0\n");
       if (FD_ISSET(test->listener, &read_set)) {
         if (test->state != CREATE_STREAMS) {
           printf("server 1\n");
@@ -808,6 +811,7 @@ int iperf_run_server(struct iperf_test *test) {
         FD_CLR(test->ctrl_sck, &read_set);
       }
 
+      printf("server 3.0\n");
       if (test->state == CREATE_STREAMS) {
         printf("server 3\n");
         if (FD_ISSET(test->prot_listener, &read_set)) {
