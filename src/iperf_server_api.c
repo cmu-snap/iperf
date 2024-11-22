@@ -673,6 +673,8 @@ int iperf_run_server(struct iperf_test *test) {
     iperf_time_now(&now);
     timeout = tmr_timeout(&now);
 
+    printf("server 0.8\n");
+
     // Ensure select() will timeout to allow handling error cases that require
     // server restart
     if (test->state ==
@@ -683,6 +685,8 @@ int iperf_run_server(struct iperf_test *test) {
         timeout = &used_timeout;
       }
     } else if (test->mode != SENDER) {  // In non-reverse active mode server
+
+
                                         // ensures data is received
       timeout_us = -1;
       if (timeout != NULL) {
@@ -700,6 +704,8 @@ int iperf_run_server(struct iperf_test *test) {
       }
       timeout = &used_timeout;
     }
+
+    printf("server 0.9\n");
 
     result = select(test->max_fd + 1, &read_set, &write_set, NULL, timeout);
     if (result < 0 && errno != EINTR) {
