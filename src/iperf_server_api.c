@@ -706,6 +706,8 @@ int iperf_run_server(struct iperf_test *test) {
     }
 
     printf("server 0.9\n");
+    printf("server test: %d\n", test);
+    printf("server timeout: %d\n", timeout);
 
     result = select(test->max_fd + 1, &read_set, &write_set, NULL, timeout);
     printf("server 0.901\n");
