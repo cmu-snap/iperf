@@ -706,9 +706,12 @@ int iperf_run_server(struct iperf_test *test) {
     }
 
     printf("server 0.9\n");
-    printf("server test: %d\n", test);
+    printf("server test ptr: %d\n", test);
     printf("server test->max_fd + 1: %d\n", test->max_fd + 1);
-    printf("server timeout: %d\n", timeout);
+    printf("server timeout ptr: %d\n", timeout);
+    if (timeout) {
+      printf("server timeout: sec: %d usec: %d\n", timeout->tv_sec, timeout->tv_usec);
+    }
 
     result = select(test->max_fd + 1, &read_set, &write_set, NULL, timeout);
     printf("server 0.901\n");
@@ -1054,17 +1057,18 @@ int iperf_run_server(struct iperf_test *test) {
           } else {
             printf("Sent first START_BURST SUCCESS\n");              
           }
-
-          // Reset state to running.
-          if (iperf_set_send_state(test, TEST_RUNNING) != 0) {           
-            printf("Sent reset TEST_RUNNING ERROR\n");              
-            cleanup_server(test);
-            return -1;
-          } else {
-            printf("Sent reset TEST_RUNNING SUCCESS\n");              
-          }
           // Nwrite(test->ctrl_sck, (char *)START_BURST, sizeof(signed char),
           //         Ptcp);
+
+          // Reset state to running.
+          test->state = TEST_RUNNING;
+          // if (iperf_set_send_state(test, TEST_RUNNING) != 0) {           
+          //   printf("Sent reset TEST_RUNNING ERROR\n");              
+          //   cleanup_server(test);
+          //   return -1;
+          // } else {
+          //   printf("Sent reset TEST_RUNNING SUCCESS\n");              
+          // }
         }
       }
     }

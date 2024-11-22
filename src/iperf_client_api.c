@@ -370,6 +370,8 @@ int iperf_handle_message_client(struct iperf_test *test) {
     case START_BURST:
       printf("client START_BURST\n");
       printf("Starting burst %lu\n", test->bursts_sent + 1);
+      // Automatically reset state to TEST_RUNNING, since this was changed by the read() above.
+      test->state = TEST_RUNNING;
       test->send_burst_now = 1;
       test->bytes_sent = 0;
       // Reset the bytes counter for each stream.
