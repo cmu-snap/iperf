@@ -1047,6 +1047,8 @@ int iperf_run_server(struct iperf_test *test) {
             cleanup_server(test);
           };
 
+          // TODO: Are we really sure that all connections are up?
+
           // Test is now in TEST_RUNNING state and all worker threads are up. 
           // Send a message to start the first burst. 
           printf("Sending first START_BURST...\n");   
